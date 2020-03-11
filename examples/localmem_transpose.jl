@@ -9,10 +9,16 @@ end
     @inbounds b[I] = a[I]
 end
 
+# this transpose kernel copies the input into an nxn shared memory tile which is
+# then copied to the output, producing a transpose with coalesced reads and
+# writes to the shared memory tile. Here, the NDRange needs to be
+# (nx/TDIM, ny/TDIM), where TDIM is the Tile dimension.
 @kernel function localmem_transpose!(a, b, @Const(TDIM), @Const(BLOCK_ROWS))
     T = eltype(a)
 
+    #tile = @localmem(Float32, (TDIM+1, TDIM))
     tile = @localmem(T, (TDIM + 1,TDIM))
+#=
 
     # Here, the NDRange has been set up to be (nx/TDIM, ny/TDIM)
     block_index = @index(Global, Cartesian)
@@ -33,7 +39,8 @@ end
     for k = 0:BLOCK_ROWS:TDIM-1
         @inbounds out[i, j + k] = tile[thread_index[1], thread_index[2] + k]
     end
-    nothing
+=#
+
 end
 
 # creating wrapper functions
@@ -80,7 +87,7 @@ function main()
     wait(ev)
 
     ev = launch_localmem_transpose!(a,b)
-    wait(ev)
+    #wait(ev)
 
     println("CPU transpose time is:")
     println("Testing CPU transpose...")
